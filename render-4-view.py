@@ -11,6 +11,8 @@ COLORS = {
     "red": (210, 30, 30),
     "green": (40, 140, 70),
     "blue": (40, 90, 180),
+    "pink": (255, 92, 239),
+    "violet": (155, 80, 230)
 }
 
 
@@ -35,11 +37,11 @@ def render_view(mesh, camera_position, object_color, size=(850, 420)):
     plotter.add_mesh(
         mesh,
         color=np.array(object_color) / 255.0,
-        show_edges=True,
+        show_edges=False,
         edge_color=(70, 70, 70),
-        line_width=0.2,
-        smooth_shading=True,
-        specular=0.15,
+        line_width=0.05,
+        smooth_shading=False,
+        specular=0.55,
         roughness=0.65,
     )
 
