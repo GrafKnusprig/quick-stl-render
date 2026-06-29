@@ -87,20 +87,29 @@ def draw_dimension(draw, p1, p2, label, color, font, text_side="bottom"):
         draw.text((tx, ty), label, font=font, fill=color)
 
 
-def paste_view(canvas, draw, view_img, box, title, font_title):
+def paste_view(canvas, draw, view_img, box, title, font_title, pad=70):
     x1, y1, x2, y2 = box
 
-    title_box = (x1, y1 + 5, x2, y1 + 42)
-    draw_centered(draw, title_box, title, font_title, (20, 20, 20))
+    draw_centered(draw, (x1, y1 + 5, x2, y1 + 42), title, font_title, (20, 20, 20))
 
-    available = (x2 - x1 - 100, y2 - y1 - 95)
+    available = (x2 - x1 - 190, y2 - y1 - 145)
     view_img.thumbnail(available, Image.Resampling.LANCZOS)
 
     px = x1 + (x2 - x1 - view_img.width) // 2
-    py = y1 + 60 + (y2 - y1 - 80 - view_img.height) // 2
+    py = y1 + 60 + (y2 - y1 - 95 - view_img.height) // 2
     canvas.paste(view_img, (px, py))
 
-    return (px, py, px + view_img.width, py + view_img.height)
+    # find actual non-white object pixels
+    arr = np.array(view_img.convert("RGB"))
+    mask = np.any(arr < 245, axis=2)
+    ys, xs = np.where(mask)
+
+    ox1 = px + xs.min()
+    ox2 = px + xs.max()
+    oy1 = py + ys.min()
+    oy2 = py + ys.max()
+
+    return (px, py, px + view_img.width, py + view_img.height), (ox1, oy1, ox2, oy2)
 
 
 def main():
@@ -191,13 +200,15 @@ def main():
     }
 
     img_boxes = {}
-    img_boxes["front"] = paste_view(canvas, draw, views["front"], boxes["front"], "Front", view_font)
-    img_boxes["left"] = paste_view(canvas, draw, views["left"], boxes["left"], "Left Side", view_font)
-    img_boxes["top"] = paste_view(canvas, draw, views["top"], boxes["top"], "Top", view_font)
-    img_boxes["iso"] = paste_view(canvas, draw, views["iso"], boxes["iso"], "Isometric", view_font)
+    obj_boxes = {}
+
+    img_boxes["front"], obj_boxes["front"] = paste_view(canvas, draw, views["front"], boxes["front"], "Front", view_font)
+    img_boxes["left"], obj_boxes["left"] = paste_view(canvas, draw, views["left"], boxes["left"], "Left Side", view_font)
+    img_boxes["top"], obj_boxes["top"] = paste_view(canvas, draw, views["top"], boxes["top"], "Top", view_font)
+    img_boxes["iso"], obj_boxes["iso"] = paste_view(canvas, draw, views["iso"], boxes["iso"], "Isometric", view_font)
 
     if args.dimensions:
-        dim_gap = 34
+        dim_gap = 32
 
         for key, w_label, h_label in [
             ("front", width, height),
@@ -205,16 +216,15 @@ def main():
             ("top", width, depth),
         ]:
             bx1, by1, bx2, by2 = boxes[key]
-            ix1, iy1, ix2, iy2 = img_boxes[key]
+            ox1, oy1, ox2, oy2 = obj_boxes[key]
 
-            # keep dimensions inside the quadrant
-            bottom_y = min(iy2 + dim_gap, by2 - 42)
-            side_x = min(ix2 + dim_gap, bx2 - 95)
+            bottom_y = min(oy2 + dim_gap, by2 - 42)
+            side_x = min(ox2 + dim_gap, bx2 - 95)
 
             draw_dimension(
                 draw,
-                (ix1, bottom_y),
-                (ix2, bottom_y),
+                (ox1, bottom_y),
+                (ox2, bottom_y),
                 f"{w_label:.1f}",
                 dim_color,
                 dim_font,
@@ -223,8 +233,8 @@ def main():
 
             draw_dimension(
                 draw,
-                (side_x, iy1),
-                (side_x, iy2),
+                (side_x, oy1),
+                (side_x, oy2),
                 f"{h_label:.1f}",
                 dim_color,
                 dim_font,
