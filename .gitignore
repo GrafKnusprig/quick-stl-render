@@ -38,3 +38,6 @@ venv.bak/
 # IDEs
 .idea/
 .vscode/
+*.png
+*.jpeg
+*.stl
